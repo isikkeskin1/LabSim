@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -143,7 +144,7 @@ class SimplePendulum(ODEModel):
         if len(state) != self.state_size:
             raise ValueError("simple pendulum requires angle and angular velocity")
         angle, angular_velocity = (float(value) for value in state)
-        return angular_velocity, -(self.gravity / self.length) * __import__("math").sin(angle)
+        return angular_velocity, -(self.gravity / self.length) * math.sin(angle)
 
 
 @dataclass(frozen=True)
