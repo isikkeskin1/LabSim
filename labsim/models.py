@@ -25,7 +25,6 @@ class ODEModel:
 @dataclass(frozen=True)
 class HarmonicOscillator(ODEModel):
     """Undamped one-dimensional oscillator."""
-
     angular_frequency: float = 1.0
 
     def __post_init__(self) -> None:
@@ -47,7 +46,6 @@ class HarmonicOscillator(ODEModel):
 @dataclass(frozen=True)
 class DampedOscillator(ODEModel):
     """One-dimensional mass-spring-damper system."""
-
     mass: float = 1.0
     stiffness: float = 1.0
     damping: float = 0.1
@@ -76,21 +74,14 @@ class DampedOscillator(ODEModel):
 @dataclass(frozen=True)
 class LotkaVolterra(ODEModel):
     """Classical predator-prey population dynamics model."""
-
     prey_growth: float = 1.0
     predation: float = 0.1
     predator_decay: float = 1.5
     predator_growth: float = 0.075
 
     def __post_init__(self) -> None:
-        if self.prey_growth <= 0:
-            raise ValueError("prey_growth must be positive")
-        if self.predation <= 0:
-            raise ValueError("predation must be positive")
-        if self.predator_decay <= 0:
-            raise ValueError("predator_decay must be positive")
-        if self.predator_growth <= 0:
-            raise ValueError("predator_growth must be positive")
+        if self.prey_growth <= 0 or self.predation <= 0 or self.predator_decay <= 0 or self.predator_growth <= 0:
+            raise ValueError("Lotka-Volterra parameters must be positive")
 
     @property
     def state_size(self) -> int:
@@ -110,7 +101,6 @@ class LotkaVolterra(ODEModel):
 @dataclass(frozen=True)
 class LogisticGrowth(ODEModel):
     """Single-population logistic growth model with a carrying capacity."""
-
     growth_rate: float = 1.0
     carrying_capacity: float = 100.0
 
@@ -130,3 +120,53 @@ class LogisticGrowth(ODEModel):
             raise ValueError("logistic growth requires one population value")
         population = float(state[0])
         return (self.growth_rate * population * (1 - population / self.carrying_capacity),)
+
+
+@dataclass(frozen=True)
+class SimplePendulum(ODEModel):
+    """Nonlinear simple pendulum using angle and angular velocity state."""
+    gravity: float = 9.81
+    length: float = 1.0
+
+    def __post_init__(self) -> None:
+        if self.gravity <= 0:
+            raise ValueError("gravity must be positive")
+        if self.length <= 0:
+            raise ValueError("length must be positive")
+
+    @property
+    def state_size(self) -> int:
+        return 2
+
+    def derivative(self, time: float, state: State) -> tuple[float, ...]:
+        del time
+        if len(state) != self.state_size:
+            raise ValueError("simple pendulum requires angle and angular velocity")
+        angle, angular_velocity = (float(value) for value in state)
+        return angular_velocity, -(self.gravity / self.length) * __import__("math").sin(angle)
+
+
+@dataclass(frozen=True)
+class SIRModel(ODEModel):
+    """Normalized susceptible-infected-recovered epidemic model."""
+    transmission_rate: float = 0.5
+    recovery_rate: float = 0.1
+
+    def __post_init__(self) -> None:
+        if self.transmission_rate <= 0:
+            raise ValueError("transmission_rate must be positive")
+        if self.recovery_rate <= 0:
+            raise ValueError("recovery_rate must be positive")
+
+    @property
+    def state_size(self) -> int:
+        return 3
+
+    def derivative(self, time: float, state: State) -> tuple[float, ...]:
+        del time
+        if len(state) != self.state_size:
+            raise ValueError("SIR model requires susceptible, infected, and recovered state")
+        susceptible, infected, _recovered = (float(value) for value in state)
+        new_infections = self.transmission_rate * susceptible * infected
+        recoveries = self.recovery_rate * infected
+        return (-new_infections, new_infections - recoveries, recoveries)
