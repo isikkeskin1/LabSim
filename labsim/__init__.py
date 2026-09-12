@@ -1,6 +1,7 @@
 """Core numerical tools for LabSim."""
 
 from .analysis import max_state_error
+from .config_io import load_config, save_config
 from .convergence import ConvergencePoint, ConvergenceStudy, run_convergence_study
 from .experiments import ExperimentConfig, run_experiment
 from .io import write_csv
@@ -26,11 +27,13 @@ __all__ = [
     "final_state_error",
     "harmonic_energy",
     "integrate_ode",
+    "load_config",
     "max_state_error",
     "parameter_sweep",
     "relative_drift",
     "root_mean_square",
     "run_convergence_study",
     "run_experiment",
+    "save_config",
     "write_csv",
 ]
