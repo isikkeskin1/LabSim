@@ -16,8 +16,29 @@ class ODESolution:
     times: tuple[float, ...]
     states: tuple[tuple[float, ...], ...]
 
+    def __post_init__(self) -> None:
+        if len(self.times) != len(self.states):
+            raise ValueError("times and states must contain the same number of samples")
+        if not self.times:
+            raise ValueError("solution must contain at least one sample")
+        width = len(self.states[0])
+        if width == 0 or any(len(state) != width for state in self.states):
+            raise ValueError("all states must have the same non-zero dimension")
+
     def __len__(self) -> int:
         return len(self.times)
+
+    @property
+    def final_time(self) -> float:
+        return self.times[-1]
+
+    @property
+    def final_state(self) -> tuple[float, ...]:
+        return self.states[-1]
+
+    @property
+    def state_dimension(self) -> int:
+        return len(self.states[0])
 
 
 def _add_scaled(state: State, *terms: tuple[float, State]) -> tuple[float, ...]:
@@ -42,12 +63,7 @@ def integrate_ode(
     steps: int = 1,
     method: str = "rk4",
 ) -> ODESolution:
-    """Integrate ``y' = f(t, y)`` on a fixed time grid.
-
-    ``method`` currently supports ``"euler"`` and classical fourth-order
-    Runge-Kutta (``"rk4"``). The initial state is always included in the
-    returned samples.
-    """
+    """Integrate ``y' = f(t, y)`` on a fixed time grid."""
     if dt <= 0:
         raise ValueError("dt must be positive")
     if steps < 0:
