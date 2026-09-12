@@ -105,3 +105,28 @@ class LotkaVolterra(ODEModel):
             self.prey_growth * prey - self.predation * prey * predator,
             self.predator_growth * prey * predator - self.predator_decay * predator,
         )
+
+
+@dataclass(frozen=True)
+class LogisticGrowth(ODEModel):
+    """Single-population logistic growth model with a carrying capacity."""
+
+    growth_rate: float = 1.0
+    carrying_capacity: float = 100.0
+
+    def __post_init__(self) -> None:
+        if self.growth_rate <= 0:
+            raise ValueError("growth_rate must be positive")
+        if self.carrying_capacity <= 0:
+            raise ValueError("carrying_capacity must be positive")
+
+    @property
+    def state_size(self) -> int:
+        return 1
+
+    def derivative(self, time: float, state: State) -> tuple[float, ...]:
+        del time
+        if len(state) != self.state_size:
+            raise ValueError("logistic growth requires one population value")
+        population = float(state[0])
+        return (self.growth_rate * population * (1 - population / self.carrying_capacity),)
