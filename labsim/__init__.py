@@ -10,7 +10,7 @@ from .metrics import final_state_error, root_mean_square, state_range, time_aver
 from .models import DampedOscillator, HarmonicOscillator, LogisticGrowth, LotkaVolterra, ODEModel, SIRModel, SimplePendulum
 from .physics import harmonic_energy, relative_drift
 from .sensitivity import central_difference
-from .solvers import ODESolution, integrate_ode
+from .solvers import ODESolution, integrate_adaptive, integrate_ode
 from .sweeps import SweepResult, SweepSummary, parameter_sweep, summarize_sweep
 
 __all__ = [
@@ -32,6 +32,7 @@ __all__ = [
     "first_crossing",
     "first_event",
     "harmonic_energy",
+    "integrate_adaptive",
     "integrate_ode",
     "load_config",
     "max_state_error",
