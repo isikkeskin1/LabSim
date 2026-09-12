@@ -4,11 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "labsim"
-version = "0.1.0"
+version = "0.2.0"
 description = "A small, extensible numerical simulation toolkit."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
+
+[project.scripts]
+labsim = "labsim.cli:main"
 
 [project.optional-dependencies]
 test = ["pytest>=8"]
