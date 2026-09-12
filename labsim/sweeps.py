@@ -6,6 +6,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
 from .experiments import ExperimentConfig, run_experiment
+from .metrics import root_mean_square
 from .models import ODEModel
 from .solvers import ODESolution
 
@@ -16,6 +17,15 @@ class SweepResult:
 
     parameter: float
     solution: ODESolution
+
+
+@dataclass(frozen=True)
+class SweepSummary:
+    """Compact scalar summary for each sweep point."""
+
+    parameter: float
+    final_state: tuple[float, ...]
+    final_norm: float
 
 
 def parameter_sweep(
@@ -35,3 +45,18 @@ def parameter_sweep(
         solution = run_experiment(model, initial_state, config)
         results.append(SweepResult(parameter, solution))
     return tuple(results)
+
+
+def summarize_sweep(results: Iterable[SweepResult]) -> tuple[SweepSummary, ...]:
+    """Reduce sweep trajectories to final-state norms for reporting."""
+    values = tuple(results)
+    if not values:
+        raise ValueError("results must not be empty")
+    return tuple(
+        SweepSummary(
+            parameter=result.parameter,
+            final_state=result.solution.final_state,
+            final_norm=root_mean_square(result.solution.final_state),
+        )
+        for result in values
+    )
