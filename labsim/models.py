@@ -71,3 +71,37 @@ class DampedOscillator(ODEModel):
         position, velocity = (float(value) for value in state)
         acceleration = (-self.stiffness * position - self.damping * velocity) / self.mass
         return velocity, acceleration
+
+
+@dataclass(frozen=True)
+class LotkaVolterra(ODEModel):
+    """Classical predator-prey population dynamics model."""
+
+    prey_growth: float = 1.0
+    predation: float = 0.1
+    predator_decay: float = 1.5
+    predator_growth: float = 0.075
+
+    def __post_init__(self) -> None:
+        if self.prey_growth <= 0:
+            raise ValueError("prey_growth must be positive")
+        if self.predation <= 0:
+            raise ValueError("predation must be positive")
+        if self.predator_decay <= 0:
+            raise ValueError("predator_decay must be positive")
+        if self.predator_growth <= 0:
+            raise ValueError("predator_growth must be positive")
+
+    @property
+    def state_size(self) -> int:
+        return 2
+
+    def derivative(self, time: float, state: State) -> tuple[float, ...]:
+        del time
+        if len(state) != self.state_size:
+            raise ValueError("Lotka-Volterra requires prey and predator state")
+        prey, predator = (float(value) for value in state)
+        return (
+            self.prey_growth * prey - self.predation * prey * predator,
+            self.predator_growth * prey * predator - self.predator_decay * predator,
+        )
