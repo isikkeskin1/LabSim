@@ -2,6 +2,7 @@
 
 from .analysis import max_state_error
 from .convergence import ConvergencePoint, ConvergenceStudy, run_convergence_study
+from .experiments import ExperimentConfig, run_experiment
 from .io import write_csv
 from .models import DampedOscillator, HarmonicOscillator, ODEModel
 from .physics import harmonic_energy, relative_drift
@@ -11,6 +12,7 @@ __all__ = [
     "ConvergencePoint",
     "ConvergenceStudy",
     "DampedOscillator",
+    "ExperimentConfig",
     "HarmonicOscillator",
     "ODEModel",
     "ODESolution",
@@ -19,5 +21,6 @@ __all__ = [
     "max_state_error",
     "relative_drift",
     "run_convergence_study",
+    "run_experiment",
     "write_csv",
 ]
