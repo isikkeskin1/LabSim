@@ -1,5 +1,9 @@
-from labsim import integrate_ode
-from labsim.events import first_crossing, first_crossing_linear, first_event
+import math
+
+import pytest
+
+from labsim import HarmonicOscillator, integrate_ode
+from labsim.events import first_crossing, first_crossing_hermite, first_crossing_linear, first_event
 
 
 def make_ramp():
@@ -33,12 +37,39 @@ def test_linear_crossing_localizes_between_samples():
     solution = integrate_ode(lambda _time, _state: (1.0,), (-0.3,), dt=0.2, steps=4)
     event = first_crossing_linear(solution, 0, 0.0)
     assert event is not None
-    assert event[0] == 0.3
-    assert event[1][0] == 0.0
+    assert event[0] == pytest.approx(0.3)
+    assert event[1][0] == pytest.approx(0.0)
 
 
 def test_linear_crossing_can_preserve_sampled_behavior():
     solution = integrate_ode(lambda _time, _state: (1.0,), (-0.3,), dt=0.2, steps=4)
     event = first_crossing_linear(solution, 0, 0.0, interpolate=False)
     assert event is not None
-    assert event[0] == 0.4
+    assert event[0] == pytest.approx(0.4)
+
+
+def test_hermite_crossing_improves_coarse_oscillator_localization():
+    model = HarmonicOscillator()
+    solution = integrate_ode(model, (1.0, 0.0), dt=0.6, steps=4, method="rk4")
+
+    linear = first_crossing_linear(solution, 0, 0.0, direction=-1)
+    hermite = first_crossing_hermite(solution, model, 0, 0.0, direction=-1)
+
+    assert linear is not None
+    assert hermite is not None
+    exact_time = math.pi / 2
+    assert abs(hermite[0] - exact_time) < abs(linear[0] - exact_time)
+    assert hermite[0] == pytest.approx(exact_time, abs=5e-3)
+    assert hermite[1][0] == pytest.approx(0.0, abs=1e-10)
+
+
+def test_hermite_crossing_validates_derivative_dimension():
+    solution = make_ramp()
+    with pytest.raises(ValueError, match="wrong dimension"):
+        first_crossing_hermite(solution, lambda _time, _state: (1.0, 2.0), 0)
+
+
+def test_hermite_crossing_rejects_nonpositive_iterations():
+    solution = make_ramp()
+    with pytest.raises(ValueError, match="iterations"):
+        first_crossing_hermite(solution, lambda _time, _state: (1.0,), 0, iterations=0)
