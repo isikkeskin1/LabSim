@@ -1,5 +1,6 @@
 """Core numerical tools for LabSim."""
 
+from .adaptive import integrate_rk23
 from .analysis import max_state_error
 from .config_io import load_config, save_config
 from .convergence import ConvergencePoint, ConvergenceStudy, run_convergence_study
@@ -18,7 +19,7 @@ __all__ = [
     "HarmonicOscillator", "LogisticGrowth", "LotkaVolterra", "ODEModel", "ODESolution",
     "SIRModel", "SimplePendulum", "SweepResult", "SweepSummary", "central_difference",
     "final_state_error", "first_crossing", "first_crossing_hermite", "first_crossing_linear", "first_event",
-    "harmonic_energy", "integrate_adaptive", "integrate_ode", "load_config", "max_state_error",
+    "harmonic_energy", "integrate_adaptive", "integrate_ode", "integrate_rk23", "load_config", "max_state_error",
     "parameter_sweep", "relative_drift", "root_mean_square", "run_convergence_study",
     "run_experiment", "save_config", "state_range", "summarize_sweep", "time_average", "write_csv",
 ]

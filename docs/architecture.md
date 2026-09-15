@@ -5,7 +5,7 @@ LabSim is intentionally split into small layers so numerical methods, physical a
 ## Layers
 
 ### Solvers
-`labsim.solvers` owns time integration. Fixed-step solvers and adaptive solvers consume a derivative function and produce immutable `ODESolution` objects containing sampled times and states.
+`labsim.solvers` owns the original fixed-step Euler/RK4 path and the embedded Heun-Euler adaptive integrator. `labsim.adaptive` contains higher-order adaptive methods; its Bogacki-Shampine RK2(3) implementation accepts the same derivative/state abstraction and returns the same immutable `ODESolution` type. Keeping the higher-order controller separate prevents the core solver module from becoming a collection of unrelated Butcher tableaux while preserving a common result interface.
 
 ### Models
 `labsim.models` expresses domain equations through `ODEModel`. Models own physical parameters and state validation, but do not implement numerical integration.
@@ -32,4 +32,4 @@ Hermite localization deliberately accepts the derivative function explicitly rat
 4. **Optional capabilities stay optional.** Visualization and future integrations should not make the core package heavier than necessary.
 5. **Small APIs compose.** Sweeps, event detection, metrics, and exports operate on `ODESolution` so they can be combined without coupling.
 
-Future work can build on this structure with solver-native dense output, higher-order adaptive methods, uncertainty propagation, richer reporting, and interactive experiment tooling.
+The adaptive stack now has a low-order Heun-Euler controller for simple problems and a third-order Bogacki-Shampine RK2(3) method for better accuracy per accepted step. Future numerical work can build from this toward solver-native dense output, higher-order RK4(5) pairs, and event-aware integration rather than adding more fixed-step schemes. Beyond solvers, uncertainty propagation, richer reporting, and interactive experiment tooling remain natural roadmap stages.
