@@ -26,6 +26,11 @@ Hermite localization deliberately accepts the derivative function explicitly rat
 
 This is post-processing dense output rather than solver-native continuous extension: it needs only an `ODESolution` and the governing derivative, so it works uniformly across the current fixed-step and adaptive solvers. A future solver-native dense representation can provide method-specific interpolation polynomials while retaining these high-level sampling operations.
 
+### Uncertainty and ensembles
+`labsim.uncertainty` provides the first uncertainty-propagation layer. `run_ensemble` evaluates a parameterized model over deterministic samples and `ensemble_statistics` computes pointwise means and population standard deviations. Aggregation intentionally requires a common time grid; adaptive trajectories should be reconstructed with `resample_uniform` before ensemble statistics are computed. This keeps uncertainty analysis independent from any particular sampling strategy while making numerical alignment explicit.
+
+The deterministic ensemble API is deliberately small. Future work can add seeded random sampling, parameter distributions, quantiles/confidence bands, multi-parameter samples, and convergence diagnostics without changing the underlying solver or model contracts.
+
 ### Data and presentation
 `labsim.io` handles portable trajectory export. `labsim.plotting` is optional and lazy-loads Matplotlib so the numerical core remains usable without a plotting stack.
 
@@ -35,6 +40,6 @@ This is post-processing dense output rather than solver-native continuous extens
 2. **Experiments are reproducible.** A configuration should be sufficient to recreate a deterministic run.
 3. **Validation is first-class.** Known analytical solutions, invariants, convergence rates, and localized events should catch numerical regressions.
 4. **Optional capabilities stay optional.** Visualization and future integrations should not make the core package heavier than necessary.
-5. **Small APIs compose.** Sweeps, event detection, metrics, dense reconstruction, and exports operate on `ODESolution` so they can be combined without coupling.
+5. **Small APIs compose.** Sweeps, event detection, metrics, dense reconstruction, uncertainty analysis, and exports operate on `ODESolution` so they can be combined without coupling.
 
-The adaptive stack now has a low-order Heun-Euler controller and a third-order Bogacki-Shampine RK2(3) method. Adaptive trajectories can be reconstructed onto arbitrary or uniform output grids without re-integration. Future numerical work can build from this toward solver-native continuous extensions, event-aware integration, and higher-order RK4(5) pairs. Beyond solvers, uncertainty propagation, richer reporting, and interactive experiment tooling remain natural roadmap stages.
+The adaptive stack now has a low-order Heun-Euler controller and a third-order Bogacki-Shampine RK2(3) method. Adaptive trajectories can be reconstructed onto arbitrary or uniform output grids without re-integration. The uncertainty layer now supports deterministic scalar-parameter ensembles on aligned grids. Natural next milestones are distribution-backed reproducible sampling and uncertainty summaries such as quantiles, followed by solver-native continuous extensions/event-aware integration and eventually higher-order RK4(5) pairs.
