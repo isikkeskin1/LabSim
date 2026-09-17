@@ -14,13 +14,14 @@ from .physics import harmonic_energy, relative_drift
 from .sensitivity import central_difference
 from .solvers import ODESolution, integrate_adaptive, integrate_ode
 from .sweeps import SweepResult, SweepSummary, parameter_sweep, summarize_sweep
+from .uncertainty import EnsembleMember, EnsembleStatistics, ensemble_statistics, run_ensemble
 
 __all__ = [
-    "ConvergencePoint", "ConvergenceStudy", "DampedOscillator", "ExperimentConfig",
+    "ConvergencePoint", "ConvergenceStudy", "DampedOscillator", "EnsembleMember", "EnsembleStatistics", "ExperimentConfig",
     "HarmonicOscillator", "LogisticGrowth", "LotkaVolterra", "ODEModel", "ODESolution",
-    "SIRModel", "SimplePendulum", "SweepResult", "SweepSummary", "central_difference",
+    "SIRModel", "SimplePendulum", "SweepResult", "SweepSummary", "central_difference", "ensemble_statistics",
     "final_state_error", "first_crossing", "first_crossing_hermite", "first_crossing_linear", "first_event",
     "harmonic_energy", "integrate_adaptive", "integrate_ode", "integrate_rk23", "load_config", "max_state_error",
     "parameter_sweep", "relative_drift", "resample_uniform", "root_mean_square", "run_convergence_study",
-    "run_experiment", "sample_hermite", "save_config", "state_range", "summarize_sweep", "time_average", "write_csv",
+    "run_ensemble", "run_experiment", "sample_hermite", "save_config", "state_range", "summarize_sweep", "time_average", "write_csv",
 ]
