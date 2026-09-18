@@ -1,8 +1,16 @@
 import pytest
 
 from labsim import ExperimentConfig, LogisticGrowth
-from labsim.uncertainty import EnsembleMember, ensemble_statistics, run_ensemble
 from labsim.solvers import ODESolution
+from labsim.uncertainty import (
+    EnsembleMember,
+    NormalDistribution,
+    UniformDistribution,
+    ensemble_quantiles,
+    ensemble_statistics,
+    run_ensemble,
+    sample_parameters,
+)
 
 
 def test_run_ensemble_preserves_parameter_samples():
@@ -12,9 +20,24 @@ def test_run_ensemble_preserves_parameter_samples():
         (0.5, 1.0, 1.5),
         ExperimentConfig(duration=1.0, dt=0.1),
     )
-
     assert [member.parameter for member in members] == [0.5, 1.0, 1.5]
     assert members[0].solution.final_state[0] < members[-1].solution.final_state[0]
+
+
+def test_seeded_parameter_sampling_is_reproducible_and_local():
+    distribution = UniformDistribution(0.5, 1.5)
+    first = sample_parameters(distribution, 5, seed=42)
+    second = sample_parameters(distribution, 5, seed=42)
+    different = sample_parameters(distribution, 5, seed=43)
+
+    assert first == second
+    assert first != different
+    assert all(0.5 <= value <= 1.5 for value in first)
+
+
+def test_normal_distribution_validates_standard_deviation():
+    with pytest.raises(ValueError, match="std"):
+        NormalDistribution(1.0, 0.0)
 
 
 def test_ensemble_statistics_computes_pointwise_mean_and_std():
@@ -23,11 +46,32 @@ def test_ensemble_statistics_computes_pointwise_mean_and_std():
         EnsembleMember(1.0, ODESolution(times, ((1.0, 2.0), (3.0, 4.0)))),
         EnsembleMember(2.0, ODESolution(times, ((3.0, 4.0), (5.0, 8.0)))),
     )
-
     stats = ensemble_statistics(members)
-
     assert stats.mean_states == ((2.0, 3.0), (4.0, 6.0))
     assert stats.std_states == pytest.approx(((1.0, 1.0), (1.0, 2.0)))
+
+
+def test_ensemble_quantiles_interpolate_pointwise():
+    times = (0.0, 1.0)
+    members = tuple(
+        EnsembleMember(float(value), ODESolution(times, ((float(value),), (2.0 * value,))))
+        for value in (0, 10, 20, 30)
+    )
+
+    quantiles = ensemble_quantiles(members, (0.25, 0.5, 0.75))
+
+    assert quantiles.probabilities == (0.25, 0.5, 0.75)
+    assert quantiles.states[0] == pytest.approx(((7.5,), (15.0,)))
+    assert quantiles.states[1] == pytest.approx(((15.0,), (30.0,)))
+    assert quantiles.states[2] == pytest.approx(((22.5,), (45.0,)))
+
+
+def test_ensemble_quantiles_reject_invalid_probabilities():
+    member = EnsembleMember(1.0, ODESolution((0.0,), ((1.0,),)))
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        ensemble_quantiles((member,), (-0.1, 0.5))
+    with pytest.raises(ValueError, match="strictly increasing"):
+        ensemble_quantiles((member,), (0.5, 0.5))
 
 
 def test_ensemble_statistics_rejects_different_time_grids():
@@ -35,7 +79,6 @@ def test_ensemble_statistics_rejects_different_time_grids():
         EnsembleMember(1.0, ODESolution((0.0, 1.0), ((1.0,), (2.0,)))),
         EnsembleMember(2.0, ODESolution((0.0, 0.5, 1.0), ((1.0,), (1.5,), (2.0,)))),
     )
-
     with pytest.raises(ValueError, match="time grid"):
         ensemble_statistics(members)
 
