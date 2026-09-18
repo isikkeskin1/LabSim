@@ -27,9 +27,11 @@ Hermite localization deliberately accepts the derivative function explicitly rat
 This is post-processing dense output rather than solver-native continuous extension: it needs only an `ODESolution` and the governing derivative, so it works uniformly across the current fixed-step and adaptive solvers. A future solver-native dense representation can provide method-specific interpolation polynomials while retaining these high-level sampling operations.
 
 ### Uncertainty and ensembles
-`labsim.uncertainty` provides the first uncertainty-propagation layer. `run_ensemble` evaluates a parameterized model over deterministic samples and `ensemble_statistics` computes pointwise means and population standard deviations. Aggregation intentionally requires a common time grid; adaptive trajectories should be reconstructed with `resample_uniform` before ensemble statistics are computed. This keeps uncertainty analysis independent from any particular sampling strategy while making numerical alignment explicit.
+`labsim.uncertainty` separates parameter sampling, simulation, and aggregation. Deterministic parameter sequences remain valid inputs to `run_ensemble`, while `UniformDistribution`, `NormalDistribution`, and `sample_parameters` provide seeded stochastic sampling without mutating Python's global random-number-generator state. This makes a seed plus distribution parameters sufficient to reproduce the sampled model parameters.
 
-The deterministic ensemble API is deliberately small. Future work can add seeded random sampling, parameter distributions, quantiles/confidence bands, multi-parameter samples, and convergence diagnostics without changing the underlying solver or model contracts.
+`ensemble_statistics` computes pointwise means and population standard deviations, and `ensemble_quantiles` provides empirical uncertainty bands using linearly interpolated sample quantiles. Both aggregation paths intentionally require a common time grid; adaptive trajectories should first be reconstructed with `resample_uniform`. Keeping alignment explicit prevents uncertainty statistics from silently depending on an interpolation policy.
+
+The current distribution abstraction is intentionally scalar. Multi-parameter uncertainty should introduce named parameter samples rather than overloading the scalar `EnsembleMember.parameter` field. Future work can also add correlated sampling, Latin-hypercube or quasi-random designs, and ensemble convergence diagnostics without changing the solver contracts.
 
 ### Data and presentation
 `labsim.io` handles portable trajectory export. `labsim.plotting` is optional and lazy-loads Matplotlib so the numerical core remains usable without a plotting stack.
@@ -37,9 +39,9 @@ The deterministic ensemble API is deliberately small. Future work can add seeded
 ## Design principles
 
 1. **Numerical code stays model-agnostic.** Physical equations should be implemented as models rather than special-cased in solvers.
-2. **Experiments are reproducible.** A configuration should be sufficient to recreate a deterministic run.
-3. **Validation is first-class.** Known analytical solutions, invariants, convergence rates, and localized events should catch numerical regressions.
+2. **Experiments are reproducible.** A configuration should be sufficient to recreate a deterministic run, and stochastic studies must make their random seed explicit.
+3. **Validation is first-class.** Known analytical solutions, invariants, convergence rates, localized events, and statistical regression tests should catch numerical regressions.
 4. **Optional capabilities stay optional.** Visualization and future integrations should not make the core package heavier than necessary.
 5. **Small APIs compose.** Sweeps, event detection, metrics, dense reconstruction, uncertainty analysis, and exports operate on `ODESolution` so they can be combined without coupling.
 
-The adaptive stack now has a low-order Heun-Euler controller and a third-order Bogacki-Shampine RK2(3) method. Adaptive trajectories can be reconstructed onto arbitrary or uniform output grids without re-integration. The uncertainty layer now supports deterministic scalar-parameter ensembles on aligned grids. Natural next milestones are distribution-backed reproducible sampling and uncertainty summaries such as quantiles, followed by solver-native continuous extensions/event-aware integration and eventually higher-order RK4(5) pairs.
+The adaptive stack now has a low-order Heun-Euler controller and a third-order Bogacki-Shampine RK2(3) method. Adaptive trajectories can be reconstructed onto arbitrary or uniform output grids without re-integration. The uncertainty layer supports deterministic or seeded distribution-backed scalar-parameter ensembles, pointwise moments, and empirical quantile bands. Natural next milestones are named multi-parameter samples and convergence diagnostics for Monte Carlo studies, followed by solver-native continuous extensions/event-aware integration and eventually higher-order RK4(5) pairs.
