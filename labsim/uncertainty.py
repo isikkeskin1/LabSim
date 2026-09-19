@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import random
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
 from .experiments import ExperimentConfig, run_experiment
@@ -14,8 +14,6 @@ from .solvers import ODESolution
 
 @dataclass(frozen=True)
 class UniformDistribution:
-    """Continuous uniform distribution for one scalar model parameter."""
-
     low: float
     high: float
 
@@ -31,8 +29,6 @@ class UniformDistribution:
 
 @dataclass(frozen=True)
 class NormalDistribution:
-    """Normal distribution for one scalar model parameter."""
-
     mean: float
     std: float
 
@@ -46,18 +42,35 @@ class NormalDistribution:
         return rng.gauss(self.mean, self.std)
 
 
+Distribution = UniformDistribution | NormalDistribution
+
+
 @dataclass(frozen=True)
 class EnsembleMember:
-    """One parameter sample and the trajectory it produced."""
-
     parameter: float
     solution: ODESolution
 
 
 @dataclass(frozen=True)
-class EnsembleStatistics:
-    """Pointwise mean and population standard deviation of an ensemble."""
+class NamedEnsembleMember:
+    """One named parameter sample and the trajectory it produced."""
 
+    parameters: tuple[tuple[str, float], ...]
+    solution: ODESolution
+
+    def parameter(self, name: str) -> float:
+        for key, value in self.parameters:
+            if key == name:
+                return value
+        raise KeyError(name)
+
+    @property
+    def parameter_dict(self) -> dict[str, float]:
+        return dict(self.parameters)
+
+
+@dataclass(frozen=True)
+class EnsembleStatistics:
     times: tuple[float, ...]
     mean_states: tuple[tuple[float, ...], ...]
     std_states: tuple[tuple[float, ...], ...]
@@ -65,24 +78,37 @@ class EnsembleStatistics:
 
 @dataclass(frozen=True)
 class EnsembleQuantiles:
-    """Pointwise empirical quantiles for an ensemble."""
-
     times: tuple[float, ...]
     probabilities: tuple[float, ...]
     states: tuple[tuple[tuple[float, ...], ...], ...]
 
 
-def sample_parameters(
-    distribution: UniformDistribution | NormalDistribution,
-    count: int,
-    *,
-    seed: int | None = None,
-) -> tuple[float, ...]:
-    """Draw reproducible scalar parameter samples without touching global RNG state."""
+def sample_parameters(distribution: Distribution, count: int, *, seed: int | None = None) -> tuple[float, ...]:
     if count <= 0:
         raise ValueError("count must be positive")
     rng = random.Random(seed)
     return tuple(distribution.sample(rng) for _ in range(count))
+
+
+def sample_parameter_sets(
+    distributions: Mapping[str, Distribution],
+    count: int,
+    *,
+    seed: int | None = None,
+) -> tuple[dict[str, float], ...]:
+    """Draw reproducible independent samples for several named parameters."""
+    if count <= 0:
+        raise ValueError("count must be positive")
+    if not distributions:
+        raise ValueError("distributions must not be empty")
+    names = tuple(distributions)
+    if any(not name for name in names):
+        raise ValueError("parameter names must not be empty")
+    rng = random.Random(seed)
+    return tuple(
+        {name: distributions[name].sample(rng) for name in names}
+        for _ in range(count)
+    )
 
 
 def run_ensemble(
@@ -91,7 +117,6 @@ def run_ensemble(
     parameters: Iterable[float],
     config: ExperimentConfig,
 ) -> tuple[EnsembleMember, ...]:
-    """Run an ensemble over scalar model-parameter samples."""
     values = tuple(float(value) for value in parameters)
     if not values:
         raise ValueError("parameters must not be empty")
@@ -101,45 +126,60 @@ def run_ensemble(
     )
 
 
-def _aligned_members(members: Iterable[EnsembleMember]) -> tuple[EnsembleMember, ...]:
+def run_named_ensemble(
+    model_factory: Callable[[Mapping[str, float]], ODEModel],
+    initial_state: tuple[float, ...],
+    parameter_sets: Iterable[Mapping[str, float]],
+    config: ExperimentConfig,
+) -> tuple[NamedEnsembleMember, ...]:
+    """Run models built from immutable snapshots of named parameter sets."""
+    samples = tuple(parameter_sets)
+    if not samples:
+        raise ValueError("parameter_sets must not be empty")
+    members = []
+    for sample in samples:
+        if not sample:
+            raise ValueError("parameter sets must not be empty")
+        normalized = tuple((str(name), float(value)) for name, value in sample.items())
+        if any(not name or not math.isfinite(value) for name, value in normalized):
+            raise ValueError("parameter names must be non-empty and values finite")
+        parameters = dict(normalized)
+        solution = run_experiment(model_factory(parameters), initial_state, config)
+        members.append(NamedEnsembleMember(normalized, solution))
+    return tuple(members)
+
+
+def _solutions(members: Iterable[EnsembleMember | NamedEnsembleMember]) -> tuple[ODESolution, ...]:
     items = tuple(members)
     if not items:
         raise ValueError("members must not be empty")
-    reference = items[0].solution
-    for member in items[1:]:
-        solution = member.solution
+    solutions = tuple(member.solution for member in items)
+    reference = solutions[0]
+    for solution in solutions[1:]:
         if solution.times != reference.times:
             raise ValueError("ensemble trajectories must share the same time grid")
         if solution.state_dimension != reference.state_dimension:
             raise ValueError("ensemble trajectories must share the same state dimension")
-    return items
+    return solutions
 
 
-def ensemble_statistics(members: Iterable[EnsembleMember]) -> EnsembleStatistics:
-    """Compute pointwise state means and population standard deviations."""
-    items = _aligned_members(members)
-    reference = items[0].solution
-    mean_states: list[tuple[float, ...]] = []
-    std_states: list[tuple[float, ...]] = []
-    count = len(items)
-
+def ensemble_statistics(members: Iterable[EnsembleMember | NamedEnsembleMember]) -> EnsembleStatistics:
+    solutions = _solutions(members)
+    reference = solutions[0]
+    mean_states = []
+    std_states = []
+    count = len(solutions)
     for sample_index in range(len(reference)):
         means = tuple(
-            sum(member.solution.states[sample_index][component] for member in items) / count
+            sum(solution.states[sample_index][component] for solution in solutions) / count
             for component in range(reference.state_dimension)
         )
         stds = tuple(
-            math.sqrt(
-                sum(
-                    (member.solution.states[sample_index][component] - means[component]) ** 2
-                    for member in items
-                ) / count
-            )
+            math.sqrt(sum((solution.states[sample_index][component] - means[component]) ** 2 for solution in solutions) / count)
             for component in range(reference.state_dimension)
         )
         mean_states.append(means)
         std_states.append(stds)
-
     return EnsembleStatistics(reference.times, tuple(mean_states), tuple(std_states))
 
 
@@ -157,11 +197,10 @@ def _quantile(values: Sequence[float], probability: float) -> float:
 
 
 def ensemble_quantiles(
-    members: Iterable[EnsembleMember],
+    members: Iterable[EnsembleMember | NamedEnsembleMember],
     probabilities: Iterable[float] = (0.05, 0.5, 0.95),
 ) -> EnsembleQuantiles:
-    """Compute linearly interpolated empirical quantiles at every trajectory sample."""
-    items = _aligned_members(members)
+    solutions = _solutions(members)
     probs = tuple(float(value) for value in probabilities)
     if not probs:
         raise ValueError("probabilities must not be empty")
@@ -169,19 +208,14 @@ def ensemble_quantiles(
         raise ValueError("probabilities must lie between 0 and 1")
     if any(right <= left for left, right in zip(probs, probs[1:])):
         raise ValueError("probabilities must be strictly increasing")
-
-    reference = items[0].solution
+    reference = solutions[0]
     quantile_states = []
     for probability in probs:
         samples = []
         for sample_index in range(len(reference)):
             samples.append(tuple(
-                _quantile(
-                    [member.solution.states[sample_index][component] for member in items],
-                    probability,
-                )
+                _quantile([solution.states[sample_index][component] for solution in solutions], probability)
                 for component in range(reference.state_dimension)
             ))
         quantile_states.append(tuple(samples))
-
     return EnsembleQuantiles(reference.times, probs, tuple(quantile_states))
