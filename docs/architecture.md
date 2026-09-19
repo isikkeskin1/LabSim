@@ -1,47 +1,42 @@
 # LabSim architecture
 
-LabSim is intentionally split into small layers so numerical methods, physical assumptions, and experiment orchestration can evolve independently.
+LabSim is split into small layers so numerical methods, physical assumptions, and experiment orchestration can evolve independently.
 
 ## Layers
 
 ### Solvers
-`labsim.solvers` owns the original fixed-step Euler/RK4 path and the embedded Heun-Euler adaptive integrator. `labsim.adaptive` contains higher-order adaptive methods; its Bogacki-Shampine RK2(3) implementation accepts the same derivative/state abstraction and returns the same immutable `ODESolution` type. Keeping the higher-order controller separate prevents the core solver module from becoming a collection of unrelated Butcher tableaux while preserving a common result interface.
+`labsim.solvers` owns fixed-step Euler/RK4 and the embedded Heun-Euler adaptive integrator. `labsim.adaptive` contains higher-order adaptive methods, currently Bogacki-Shampine RK2(3). All return the immutable `ODESolution` interface.
 
 ### Models
-`labsim.models` expresses domain equations through `ODEModel`. Models own physical parameters and state validation, but do not implement numerical integration.
+`labsim.models` expresses domain equations through `ODEModel`. Models own physical parameters and state validation, not numerical integration.
 
 ### Experiments
-`labsim.experiments` turns a model, initial state, and `ExperimentConfig` into a reproducible run. Configuration belongs here rather than inside individual physical models.
+`labsim.experiments` combines a model, initial state, and `ExperimentConfig` into a reproducible run.
 
 ### Analysis and diagnostics
-`labsim.analysis`, `labsim.convergence`, `labsim.metrics`, and `labsim.physics` evaluate numerical error, convergence, trajectory statistics, and physical invariants without changing the simulation itself.
+`labsim.analysis`, `labsim.convergence`, `labsim.metrics`, and `labsim.physics` evaluate numerical error, convergence, trajectory statistics, and physical invariants without changing simulations.
 
-### Events
-`labsim.events` detects predicates and threshold crossings on completed trajectories. Sampled crossings remain available for backwards-compatible behavior, linear localization estimates an event between bracketing samples, and cubic Hermite localization uses endpoint derivatives to provide a higher-fidelity estimate without re-integrating the trajectory.
-
-Hermite localization deliberately accepts the derivative function explicitly rather than storing solver internals in `ODESolution`. That keeps solutions lightweight and lets the same event API work with fixed-step and adaptive trajectories as long as the governing derivative is available.
-
-### Dense reconstruction
-`labsim.dense` generalizes the same endpoint-derivative idea from one event location to arbitrary trajectory sampling. `sample_hermite` reconstructs states at requested in-domain times with cubic Hermite interpolation, while `resample_uniform` converts irregular adaptive output to a regular grid suitable for comparison, export, and plotting. Endpoint derivatives are evaluated lazily and cached during a sampling call.
-
-This is post-processing dense output rather than solver-native continuous extension: it needs only an `ODESolution` and the governing derivative, so it works uniformly across the current fixed-step and adaptive solvers. A future solver-native dense representation can provide method-specific interpolation polynomials while retaining these high-level sampling operations.
+### Events and dense reconstruction
+`labsim.events` provides sampled, linear, and cubic-Hermite event localization. `labsim.dense` generalizes endpoint-derivative interpolation to arbitrary sampling and uniform resampling. These remain post-processing operations over `ODESolution`, leaving room for future solver-native continuous extensions.
 
 ### Uncertainty and ensembles
-`labsim.uncertainty` separates parameter sampling, simulation, and aggregation. Deterministic parameter sequences remain valid inputs to `run_ensemble`, while `UniformDistribution`, `NormalDistribution`, and `sample_parameters` provide seeded stochastic sampling without mutating Python's global random-number-generator state. This makes a seed plus distribution parameters sufficient to reproduce the sampled model parameters.
+`labsim.uncertainty` separates parameter sampling, simulation, and aggregation. Scalar studies remain supported by `run_ensemble`, while `sample_parameter_sets` and `run_named_ensemble` extend the same workflow to several independently sampled, named parameters. A named ensemble member stores an immutable parameter snapshot so results retain the exact inputs that produced them.
 
-`ensemble_statistics` computes pointwise means and population standard deviations, and `ensemble_quantiles` provides empirical uncertainty bands using linearly interpolated sample quantiles. Both aggregation paths intentionally require a common time grid; adaptive trajectories should first be reconstructed with `resample_uniform`. Keeping alignment explicit prevents uncertainty statistics from silently depending on an interpolation policy.
+`UniformDistribution` and `NormalDistribution` use a local seeded RNG. For multi-parameter samples, one RNG drives the distributions in mapping insertion order, making a seed plus an ordered distribution specification sufficient to reproduce the complete sample matrix without mutating Python's global RNG state.
 
-The current distribution abstraction is intentionally scalar. Multi-parameter uncertainty should introduce named parameter samples rather than overloading the scalar `EnsembleMember.parameter` field. Future work can also add correlated sampling, Latin-hypercube or quasi-random designs, and ensemble convergence diagnostics without changing the solver contracts.
+`ensemble_statistics` and `ensemble_quantiles` accept both scalar and named members. Aggregation deliberately requires a common time grid; adaptive trajectories should first be reconstructed with `resample_uniform`. This prevents statistics from silently depending on an interpolation policy.
+
+Named sampling currently assumes independent marginals. Correlated distributions should be introduced as an explicit joint-distribution abstraction rather than hidden inside individual scalar distributions. The next uncertainty milestone is Monte Carlo convergence diagnostics so users can measure whether estimated moments have stabilized as ensemble size grows; variance-reduction designs such as Latin hypercube and quasi-random sampling can follow.
 
 ### Data and presentation
-`labsim.io` handles portable trajectory export. `labsim.plotting` is optional and lazy-loads Matplotlib so the numerical core remains usable without a plotting stack.
+`labsim.io` handles portable trajectory export. `labsim.plotting` is optional and lazy-loads Matplotlib.
 
 ## Design principles
 
-1. **Numerical code stays model-agnostic.** Physical equations should be implemented as models rather than special-cased in solvers.
-2. **Experiments are reproducible.** A configuration should be sufficient to recreate a deterministic run, and stochastic studies must make their random seed explicit.
-3. **Validation is first-class.** Known analytical solutions, invariants, convergence rates, localized events, and statistical regression tests should catch numerical regressions.
-4. **Optional capabilities stay optional.** Visualization and future integrations should not make the core package heavier than necessary.
-5. **Small APIs compose.** Sweeps, event detection, metrics, dense reconstruction, uncertainty analysis, and exports operate on `ODESolution` so they can be combined without coupling.
+1. **Numerical code stays model-agnostic.** Physical equations belong in models rather than solvers.
+2. **Experiments are reproducible.** Deterministic configuration and stochastic seeds must be explicit.
+3. **Validation is first-class.** Analytical solutions, invariants, convergence rates, localized events, and statistical regression tests guard numerical behavior.
+4. **Optional capabilities stay optional.** Presentation dependencies do not burden the numerical core.
+5. **Small APIs compose.** Sweeps, events, metrics, dense reconstruction, uncertainty analysis, and exports share `ODESolution` rather than coupling to one solver.
 
-The adaptive stack now has a low-order Heun-Euler controller and a third-order Bogacki-Shampine RK2(3) method. Adaptive trajectories can be reconstructed onto arbitrary or uniform output grids without re-integration. The uncertainty layer supports deterministic or seeded distribution-backed scalar-parameter ensembles, pointwise moments, and empirical quantile bands. Natural next milestones are named multi-parameter samples and convergence diagnostics for Monte Carlo studies, followed by solver-native continuous extensions/event-aware integration and eventually higher-order RK4(5) pairs.
+The adaptive stack now spans low-order and third-order embedded methods plus reusable dense reconstruction. The uncertainty layer supports scalar and named multi-parameter ensembles, seeded independent sampling, pointwise moments, and empirical quantile bands. Natural next milestones are Monte Carlo convergence diagnostics, correlated sampling designs, and then solver-native continuous extensions/event-aware integration.
