@@ -15,17 +15,18 @@ from .sensitivity import central_difference
 from .solvers import ODESolution, integrate_adaptive, integrate_ode
 from .sweeps import SweepResult, SweepSummary, parameter_sweep, summarize_sweep
 from .uncertainty import (
-    EnsembleMember, EnsembleQuantiles, EnsembleStatistics, NamedEnsembleMember,
-    NormalDistribution, UniformDistribution, ensemble_quantiles, ensemble_statistics,
-    run_ensemble, run_named_ensemble, sample_parameter_sets, sample_parameters,
+    EnsembleMember, EnsembleQuantiles, EnsembleStatistics, MonteCarloConvergence,
+    MonteCarloEstimate, NamedEnsembleMember, NormalDistribution, UniformDistribution,
+    ensemble_quantiles, ensemble_statistics, monte_carlo_convergence, run_ensemble,
+    run_named_ensemble, sample_parameter_sets, sample_parameters,
 )
 
 __all__ = [
     "ConvergencePoint", "ConvergenceStudy", "DampedOscillator", "EnsembleMember", "EnsembleQuantiles", "EnsembleStatistics", "ExperimentConfig",
-    "HarmonicOscillator", "LogisticGrowth", "LotkaVolterra", "NamedEnsembleMember", "NormalDistribution", "ODEModel", "ODESolution",
+    "HarmonicOscillator", "LogisticGrowth", "LotkaVolterra", "MonteCarloConvergence", "MonteCarloEstimate", "NamedEnsembleMember", "NormalDistribution", "ODEModel", "ODESolution",
     "SIRModel", "SimplePendulum", "SweepResult", "SweepSummary", "UniformDistribution", "central_difference", "ensemble_quantiles", "ensemble_statistics",
     "final_state_error", "first_crossing", "first_crossing_hermite", "first_crossing_linear", "first_event", "harmonic_energy",
-    "integrate_adaptive", "integrate_ode", "integrate_rk23", "load_config", "max_state_error", "parameter_sweep", "relative_drift",
+    "integrate_adaptive", "integrate_ode", "integrate_rk23", "load_config", "max_state_error", "monte_carlo_convergence", "parameter_sweep", "relative_drift",
     "resample_uniform", "root_mean_square", "run_convergence_study", "run_ensemble", "run_experiment", "run_named_ensemble",
     "sample_hermite", "sample_parameter_sets", "sample_parameters", "save_config", "state_range", "summarize_sweep", "time_average", "write_csv",
 ]
