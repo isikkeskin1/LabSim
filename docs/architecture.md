@@ -26,7 +26,9 @@ LabSim is split into small layers so numerical methods, physical assumptions, an
 
 `ensemble_statistics` and `ensemble_quantiles` accept both scalar and named members. Aggregation deliberately requires a common time grid; adaptive trajectories should first be reconstructed with `resample_uniform`. This prevents statistics from silently depending on an interpolation policy.
 
-Named sampling currently assumes independent marginals. Correlated distributions should be introduced as an explicit joint-distribution abstraction rather than hidden inside individual scalar distributions. The next uncertainty milestone is Monte Carlo convergence diagnostics so users can measure whether estimated moments have stabilized as ensemble size grows; variance-reduction designs such as Latin hypercube and quasi-random sampling can follow.
+`monte_carlo_convergence` evaluates a scalar observable over one already-computed ensemble and records prefix estimates at requested sample counts. Each checkpoint reports the running mean, population standard deviation, and estimated standard error of the mean. Reusing prefixes makes convergence inspection deterministic and avoids rerunning simulations merely to compare sample sizes. The observable is explicit, so the same ensemble can be checked for final state, peak response, event time, energy drift, or another scalar scientific quantity.
+
+Named sampling currently assumes independent marginals. Correlated distributions should be introduced as an explicit joint-distribution abstraction rather than hidden inside individual scalar distributions. With basic Monte Carlo convergence diagnostics now available, variance-reduction designs such as Latin hypercube and quasi-random sampling are natural next uncertainty milestones.
 
 ### Data and presentation
 `labsim.io` handles portable trajectory export. `labsim.plotting` is optional and lazy-loads Matplotlib.
@@ -39,4 +41,4 @@ Named sampling currently assumes independent marginals. Correlated distributions
 4. **Optional capabilities stay optional.** Presentation dependencies do not burden the numerical core.
 5. **Small APIs compose.** Sweeps, events, metrics, dense reconstruction, uncertainty analysis, and exports share `ODESolution` rather than coupling to one solver.
 
-The adaptive stack now spans low-order and third-order embedded methods plus reusable dense reconstruction. The uncertainty layer supports scalar and named multi-parameter ensembles, seeded independent sampling, pointwise moments, and empirical quantile bands. Natural next milestones are Monte Carlo convergence diagnostics, correlated sampling designs, and then solver-native continuous extensions/event-aware integration.
+The adaptive stack now spans low-order and third-order embedded methods plus reusable dense reconstruction. The uncertainty layer supports scalar and named multi-parameter ensembles, seeded independent sampling, pointwise moments, empirical quantile bands, and checkpointed Monte Carlo convergence diagnostics. Natural next milestones are variance-reduced/correlated sampling designs and then solver-native continuous extensions/event-aware integration.
