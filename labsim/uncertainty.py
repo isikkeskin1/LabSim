@@ -83,6 +83,27 @@ class EnsembleQuantiles:
     states: tuple[tuple[tuple[float, ...], ...], ...]
 
 
+@dataclass(frozen=True)
+class MonteCarloEstimate:
+    """Running estimate of one scalar observable at a sample checkpoint."""
+
+    samples: int
+    mean: float
+    std: float
+    standard_error: float
+
+
+@dataclass(frozen=True)
+class MonteCarloConvergence:
+    """Checkpointed convergence history for a scalar ensemble observable."""
+
+    estimates: tuple[MonteCarloEstimate, ...]
+
+    @property
+    def final(self) -> MonteCarloEstimate:
+        return self.estimates[-1]
+
+
 def sample_parameters(distribution: Distribution, count: int, *, seed: int | None = None) -> tuple[float, ...]:
     if count <= 0:
         raise ValueError("count must be positive")
@@ -181,6 +202,60 @@ def ensemble_statistics(members: Iterable[EnsembleMember | NamedEnsembleMember])
         mean_states.append(means)
         std_states.append(stds)
     return EnsembleStatistics(reference.times, tuple(mean_states), tuple(std_states))
+
+
+def monte_carlo_convergence(
+    members: Iterable[EnsembleMember | NamedEnsembleMember],
+    observable: Callable[[ODESolution], float],
+    checkpoints: Iterable[int] | None = None,
+) -> MonteCarloConvergence:
+    """Track running mean uncertainty for a scalar simulation observable.
+
+    The population standard deviation is reported together with the estimated
+    standard error of the mean, ``std / sqrt(n)``. Checkpoints refer to prefix
+    sizes of the supplied ensemble, so one simulation set can be inspected at
+    several Monte Carlo sample counts without rerunning models.
+    """
+    items = tuple(members)
+    if not items:
+        raise ValueError("members must not be empty")
+
+    if checkpoints is None:
+        sizes = tuple(range(1, len(items) + 1))
+    else:
+        sizes = tuple(int(value) for value in checkpoints)
+        if not sizes:
+            raise ValueError("checkpoints must not be empty")
+        if any(value <= 0 or value > len(items) for value in sizes):
+            raise ValueError("checkpoints must lie between 1 and the ensemble size")
+        if any(right <= left for left, right in zip(sizes, sizes[1:])):
+            raise ValueError("checkpoints must be strictly increasing")
+
+    values = []
+    for member in items:
+        value = float(observable(member.solution))
+        if not math.isfinite(value):
+            raise ValueError("observable must return finite values")
+        values.append(value)
+
+    estimates = []
+    running_sum = 0.0
+    running_square_sum = 0.0
+    checkpoint_index = 0
+    for index, value in enumerate(values, start=1):
+        running_sum += value
+        running_square_sum += value * value
+        if index != sizes[checkpoint_index]:
+            continue
+        mean = running_sum / index
+        variance = max(0.0, running_square_sum / index - mean * mean)
+        std = math.sqrt(variance)
+        estimates.append(MonteCarloEstimate(index, mean, std, std / math.sqrt(index)))
+        checkpoint_index += 1
+        if checkpoint_index == len(sizes):
+            break
+
+    return MonteCarloConvergence(tuple(estimates))
 
 
 def _quantile(values: Sequence[float], probability: float) -> float:
