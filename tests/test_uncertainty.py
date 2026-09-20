@@ -8,6 +8,7 @@ from labsim.uncertainty import (
     UniformDistribution,
     ensemble_quantiles,
     ensemble_statistics,
+    monte_carlo_convergence,
     run_ensemble,
     run_named_ensemble,
     sample_parameter_sets,
@@ -67,6 +68,34 @@ def test_ensemble_statistics_computes_pointwise_mean_and_std():
     stats = ensemble_statistics(members)
     assert stats.mean_states == ((2.0, 3.0), (4.0, 6.0))
     assert stats.std_states == pytest.approx(((1.0, 1.0), (1.0, 2.0)))
+
+
+def test_monte_carlo_convergence_tracks_prefix_estimates():
+    members = tuple(
+        EnsembleMember(float(value), ODESolution((0.0,), ((float(value),),)))
+        for value in (1.0, 2.0, 3.0, 4.0)
+    )
+    convergence = monte_carlo_convergence(
+        members,
+        lambda solution: solution.final_state[0],
+        checkpoints=(1, 2, 4),
+    )
+
+    assert [estimate.samples for estimate in convergence.estimates] == [1, 2, 4]
+    assert [estimate.mean for estimate in convergence.estimates] == pytest.approx([1.0, 1.5, 2.5])
+    assert convergence.estimates[0].standard_error == 0.0
+    assert convergence.final.std == pytest.approx(5 ** 0.5 / 2)
+    assert convergence.final.standard_error == pytest.approx(5 ** 0.5 / 4)
+
+
+def test_monte_carlo_convergence_validates_checkpoints_and_observable():
+    member = EnsembleMember(1.0, ODESolution((0.0,), ((1.0,),)))
+    with pytest.raises(ValueError, match="strictly increasing"):
+        monte_carlo_convergence((member,), lambda solution: 1.0, checkpoints=(1, 1))
+    with pytest.raises(ValueError, match="ensemble size"):
+        monte_carlo_convergence((member,), lambda solution: 1.0, checkpoints=(2,))
+    with pytest.raises(ValueError, match="finite"):
+        monte_carlo_convergence((member,), lambda solution: float("nan"))
 
 
 def test_ensemble_quantiles_interpolate_pointwise():
