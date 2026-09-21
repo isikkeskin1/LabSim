@@ -46,5 +46,5 @@ def test_sir_model_conserves_normalized_population():
 
 
 def test_sir_model_rejects_wrong_dimension():
-    with pytest.raises(ValueError, match="three"):
+    with pytest.raises(ValueError, match="susceptible, infected, and recovered"):
         SIRModel()(0.0, (0.9, 0.1))

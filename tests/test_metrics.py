@@ -6,7 +6,7 @@ from labsim.metrics import root_mean_square, state_range, time_average
 
 def test_state_range_measures_component_span():
     solution = integrate_ode(lambda _time, state: (state[0],), (1.0,), dt=0.5, steps=2, method="euler")
-    assert state_range(solution, 0) == pytest.approx(2.25)
+    assert state_range(solution, 0) == pytest.approx(1.25)
 
 
 def test_time_average_uses_trapezoidal_area():

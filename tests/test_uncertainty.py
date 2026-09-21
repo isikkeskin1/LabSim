@@ -93,7 +93,8 @@ def test_ensemble_statistics_computes_pointwise_mean_and_std():
     members = (EnsembleMember(1.0, ODESolution(times, ((1.0, 2.0), (3.0, 4.0)))), EnsembleMember(2.0, ODESolution(times, ((3.0, 4.0), (5.0, 8.0)))))
     stats = ensemble_statistics(members)
     assert stats.mean_states == ((2.0, 3.0), (4.0, 6.0))
-    assert stats.std_states == pytest.approx(((1.0, 1.0), (1.0, 2.0)))
+    assert stats.std_states[0] == pytest.approx((1.0, 1.0))
+    assert stats.std_states[1] == pytest.approx((1.0, 2.0))
 
 
 def test_monte_carlo_convergence_tracks_prefix_estimates():
@@ -120,9 +121,9 @@ def test_ensemble_quantiles_interpolate_pointwise():
     times = (0.0, 1.0)
     members = tuple(EnsembleMember(float(value), ODESolution(times, ((float(value),), (2.0 * value,)))) for value in (0, 10, 20, 30))
     quantiles = ensemble_quantiles(members, (0.25, 0.5, 0.75))
-    assert quantiles.states[0] == pytest.approx(((7.5,), (15.0,)))
-    assert quantiles.states[1] == pytest.approx(((15.0,), (30.0,)))
-    assert quantiles.states[2] == pytest.approx(((22.5,), (45.0,)))
+    assert [state[0] for state in quantiles.states[0]] == pytest.approx((7.5, 15.0))
+    assert [state[0] for state in quantiles.states[1]] == pytest.approx((15.0, 30.0))
+    assert [state[0] for state in quantiles.states[2]] == pytest.approx((22.5, 45.0))
 
 
 def test_ensemble_quantiles_reject_invalid_probabilities():

@@ -18,7 +18,7 @@ def test_euler_is_available_for_simple_linear_system():
 
 
 def test_dimension_mismatch_is_rejected():
-    with pytest.raises(ValueError, match="wrong dimension"):
+    with pytest.raises(ValueError, match="same dimension"):
         integrate_ode(lambda _t, _y: (1.0, 2.0), (0.0,), dt=0.1)
 
 

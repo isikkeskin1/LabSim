@@ -20,4 +20,4 @@ def write_csv(solution: ODESolution, path: str | Path) -> None:
     with destination.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
         writer.writerow(["time", *[f"state_{index}" for index in range(width)]])
-        writer.writerows(zip(solution.times, solution.states))
+        writer.writerows((time, *state) for time, state in zip(solution.times, solution.states))
