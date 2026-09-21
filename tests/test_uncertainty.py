@@ -8,6 +8,7 @@ from labsim.uncertainty import (
     UniformDistribution,
     ensemble_quantiles,
     ensemble_statistics,
+    latin_hypercube_parameter_sets,
     monte_carlo_convergence,
     run_ensemble,
     run_named_ensemble,
@@ -35,6 +36,31 @@ def test_named_parameter_sampling_is_reproducible():
     assert first == sample_parameter_sets(distributions, 4, seed=12)
     assert first != sample_parameter_sets(distributions, 4, seed=13)
     assert tuple(first[0]) == ("growth_rate", "capacity")
+
+
+def test_latin_hypercube_is_reproducible_and_stratifies_each_uniform_marginal():
+    distributions = {"x": UniformDistribution(0.0, 1.0), "y": UniformDistribution(10.0, 20.0)}
+    samples = latin_hypercube_parameter_sets(distributions, 8, seed=17)
+    assert samples == latin_hypercube_parameter_sets(distributions, 8, seed=17)
+    assert samples != latin_hypercube_parameter_sets(distributions, 8, seed=18)
+    for name, low, high in (("x", 0.0, 1.0), ("y", 10.0, 20.0)):
+        width = (high - low) / 8
+        strata = sorted(int((sample[name] - low) / width) for sample in samples)
+        assert strata == list(range(8))
+
+
+def test_latin_hypercube_supports_normal_marginals_without_infinities():
+    samples = latin_hypercube_parameter_sets({"rate": NormalDistribution(2.0, 0.5)}, 32, seed=3)
+    values = [sample["rate"] for sample in samples]
+    assert all(value == value and abs(value) < float("inf") for value in values)
+    assert min(values) < 2.0 < max(values)
+
+
+def test_latin_hypercube_validates_design_shape():
+    with pytest.raises(ValueError, match="count"):
+        latin_hypercube_parameter_sets({"x": UniformDistribution(0.0, 1.0)}, 0)
+    with pytest.raises(ValueError, match="must not be empty"):
+        latin_hypercube_parameter_sets({}, 4)
 
 
 def test_named_ensemble_propagates_multiple_parameters():
@@ -71,16 +97,8 @@ def test_ensemble_statistics_computes_pointwise_mean_and_std():
 
 
 def test_monte_carlo_convergence_tracks_prefix_estimates():
-    members = tuple(
-        EnsembleMember(float(value), ODESolution((0.0,), ((float(value),),)))
-        for value in (1.0, 2.0, 3.0, 4.0)
-    )
-    convergence = monte_carlo_convergence(
-        members,
-        lambda solution: solution.final_state[0],
-        checkpoints=(1, 2, 4),
-    )
-
+    members = tuple(EnsembleMember(float(value), ODESolution((0.0,), ((float(value),),))) for value in (1.0, 2.0, 3.0, 4.0))
+    convergence = monte_carlo_convergence(members, lambda solution: solution.final_state[0], checkpoints=(1, 2, 4))
     assert [estimate.samples for estimate in convergence.estimates] == [1, 2, 4]
     assert [estimate.mean for estimate in convergence.estimates] == pytest.approx([1.0, 1.5, 2.5])
     assert convergence.estimates[0].standard_error == 0.0
