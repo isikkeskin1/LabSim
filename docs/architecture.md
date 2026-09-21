@@ -24,11 +24,13 @@ LabSim is split into small layers so numerical methods, physical assumptions, an
 
 `UniformDistribution` and `NormalDistribution` use a local seeded RNG. For multi-parameter samples, one RNG drives the distributions in mapping insertion order, making a seed plus an ordered distribution specification sufficient to reproduce the complete sample matrix without mutating Python's global RNG state.
 
+`latin_hypercube_parameter_sets` adds a variance-reduced design for independent marginals. It partitions each marginal CDF into equally probable strata, draws once inside every stratum, and independently permutes the resulting values between dimensions. Distribution quantile transforms map those unit-interval samples into uniform or normal physical parameters. This guarantees one-dimensional stratification without pretending to model correlation between parameters.
+
 `ensemble_statistics` and `ensemble_quantiles` accept both scalar and named members. Aggregation deliberately requires a common time grid; adaptive trajectories should first be reconstructed with `resample_uniform`. This prevents statistics from silently depending on an interpolation policy.
 
 `monte_carlo_convergence` evaluates a scalar observable over one already-computed ensemble and records prefix estimates at requested sample counts. Each checkpoint reports the running mean, population standard deviation, and estimated standard error of the mean. Reusing prefixes makes convergence inspection deterministic and avoids rerunning simulations merely to compare sample sizes. The observable is explicit, so the same ensemble can be checked for final state, peak response, event time, energy drift, or another scalar scientific quantity.
 
-Named sampling currently assumes independent marginals. Correlated distributions should be introduced as an explicit joint-distribution abstraction rather than hidden inside individual scalar distributions. With basic Monte Carlo convergence diagnostics now available, variance-reduction designs such as Latin hypercube and quasi-random sampling are natural next uncertainty milestones.
+Named sampling currently assumes independent marginals. Correlated distributions should be introduced as an explicit joint-distribution abstraction rather than hidden inside individual scalar distributions. Latin hypercube sampling improves marginal coverage but intentionally does not change that independence model. Natural next uncertainty milestones are comparing estimator efficiency between plain Monte Carlo and stratified designs, then adding explicit correlated/joint parameter distributions.
 
 ### Data and presentation
 `labsim.io` handles portable trajectory export. `labsim.plotting` is optional and lazy-loads Matplotlib.
@@ -41,4 +43,4 @@ Named sampling currently assumes independent marginals. Correlated distributions
 4. **Optional capabilities stay optional.** Presentation dependencies do not burden the numerical core.
 5. **Small APIs compose.** Sweeps, events, metrics, dense reconstruction, uncertainty analysis, and exports share `ODESolution` rather than coupling to one solver.
 
-The adaptive stack now spans low-order and third-order embedded methods plus reusable dense reconstruction. The uncertainty layer supports scalar and named multi-parameter ensembles, seeded independent sampling, pointwise moments, empirical quantile bands, and checkpointed Monte Carlo convergence diagnostics. Natural next milestones are variance-reduced/correlated sampling designs and then solver-native continuous extensions/event-aware integration.
+The adaptive stack now spans low-order and third-order embedded methods plus reusable dense reconstruction. The uncertainty layer supports scalar and named multi-parameter ensembles, seeded independent random sampling, Latin hypercube stratification, pointwise moments, empirical quantile bands, and checkpointed Monte Carlo convergence diagnostics. Natural next milestones are estimator-efficiency diagnostics and correlated sampling designs, followed by solver-native continuous extensions/event-aware integration.
