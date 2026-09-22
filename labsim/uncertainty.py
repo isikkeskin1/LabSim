@@ -61,8 +61,6 @@ class EnsembleMember:
 
 @dataclass(frozen=True)
 class NamedEnsembleMember:
-    """One named parameter sample and the trajectory it produced."""
-
     parameters: tuple[tuple[str, float], ...]
     solution: ODESolution
 
@@ -93,8 +91,6 @@ class EnsembleQuantiles:
 
 @dataclass(frozen=True)
 class MonteCarloEstimate:
-    """Running estimate of one scalar observable at a sample checkpoint."""
-
     samples: int
     mean: float
     std: float
@@ -103,13 +99,31 @@ class MonteCarloEstimate:
 
 @dataclass(frozen=True)
 class MonteCarloConvergence:
-    """Checkpointed convergence history for a scalar ensemble observable."""
-
     estimates: tuple[MonteCarloEstimate, ...]
 
     @property
     def final(self) -> MonteCarloEstimate:
         return self.estimates[-1]
+
+
+@dataclass(frozen=True)
+class SamplingEfficiency:
+    """Replicated estimator variability for Monte Carlo and Latin hypercube designs."""
+
+    samples_per_replication: int
+    replications: int
+    monte_carlo_mean: float
+    latin_hypercube_mean: float
+    monte_carlo_std: float
+    latin_hypercube_std: float
+
+    @property
+    def variance_ratio(self) -> float:
+        """Monte Carlo variance divided by Latin-hypercube variance."""
+        lhs_variance = self.latin_hypercube_std ** 2
+        if lhs_variance == 0.0:
+            return math.inf if self.monte_carlo_std > 0.0 else 1.0
+        return self.monte_carlo_std ** 2 / lhs_variance
 
 
 def _standard_normal_quantile(probability: float) -> float:
@@ -138,13 +152,7 @@ def sample_parameters(distribution: Distribution, count: int, *, seed: int | Non
     return tuple(distribution.sample(rng) for _ in range(count))
 
 
-def sample_parameter_sets(
-    distributions: Mapping[str, Distribution],
-    count: int,
-    *,
-    seed: int | None = None,
-) -> tuple[dict[str, float], ...]:
-    """Draw reproducible independent samples for several named parameters."""
+def sample_parameter_sets(distributions: Mapping[str, Distribution], count: int, *, seed: int | None = None) -> tuple[dict[str, float], ...]:
     if count <= 0:
         raise ValueError("count must be positive")
     if not distributions:
@@ -156,18 +164,8 @@ def sample_parameter_sets(
     return tuple({name: distributions[name].sample(rng) for name in names} for _ in range(count))
 
 
-def latin_hypercube_parameter_sets(
-    distributions: Mapping[str, Distribution],
-    count: int,
-    *,
-    seed: int | None = None,
-) -> tuple[dict[str, float], ...]:
-    """Draw a Latin-hypercube design from independent named marginals.
-
-    Each marginal probability interval is visited exactly once. Dimensions are
-    shuffled independently, giving better one-dimensional coverage than plain
-    random sampling while preserving the independent-marginal assumption.
-    """
+def latin_hypercube_parameter_sets(distributions: Mapping[str, Distribution], count: int, *, seed: int | None = None) -> tuple[dict[str, float], ...]:
+    """Draw a Latin-hypercube design from independent named marginals."""
     if count <= 0:
         raise ValueError("count must be positive")
     if not distributions:
@@ -175,17 +173,61 @@ def latin_hypercube_parameter_sets(
     names = tuple(distributions)
     if any(not name for name in names):
         raise ValueError("parameter names must not be empty")
-
     rng = random.Random(seed)
     columns: dict[str, tuple[float, ...]] = {}
     for name in names:
-        distribution = distributions[name]
         probabilities = [(index + rng.random()) / count for index in range(count)]
-        values = [distribution.quantile(probability) for probability in probabilities]
+        values = [distributions[name].quantile(probability) for probability in probabilities]
         rng.shuffle(values)
         columns[name] = tuple(values)
-
     return tuple({name: columns[name][row] for name in names} for row in range(count))
+
+
+def compare_sampling_efficiency(
+    distributions: Mapping[str, Distribution],
+    observable: Callable[[Mapping[str, float]], float],
+    *,
+    samples: int,
+    replications: int = 32,
+    seed: int | None = None,
+) -> SamplingEfficiency:
+    """Compare replicated estimator variability for plain MC and Latin hypercube.
+
+    The observable is evaluated directly on parameter sets, so this diagnostic can
+    be used for cheap analytical checks or for expensive simulation-derived scalar
+    outputs supplied by a caller. Each replication receives deterministic child
+    seeds from a local RNG; global random state is never touched.
+    """
+    if samples <= 0:
+        raise ValueError("samples must be positive")
+    if replications < 2:
+        raise ValueError("replications must be at least 2")
+    if not distributions:
+        raise ValueError("distributions must not be empty")
+
+    rng = random.Random(seed)
+    mc_estimates: list[float] = []
+    lhs_estimates: list[float] = []
+    for _ in range(replications):
+        mc_seed = rng.randrange(2**63)
+        lhs_seed = rng.randrange(2**63)
+        mc_design = sample_parameter_sets(distributions, samples, seed=mc_seed)
+        lhs_design = latin_hypercube_parameter_sets(distributions, samples, seed=lhs_seed)
+        mc_values = [float(observable(point)) for point in mc_design]
+        lhs_values = [float(observable(point)) for point in lhs_design]
+        if any(not math.isfinite(value) for value in (*mc_values, *lhs_values)):
+            raise ValueError("observable must return finite values")
+        mc_estimates.append(sum(mc_values) / samples)
+        lhs_estimates.append(sum(lhs_values) / samples)
+
+    def summarize(values: Sequence[float]) -> tuple[float, float]:
+        mean = sum(values) / len(values)
+        variance = sum((value - mean) ** 2 for value in values) / (len(values) - 1)
+        return mean, math.sqrt(variance)
+
+    mc_mean, mc_std = summarize(mc_estimates)
+    lhs_mean, lhs_std = summarize(lhs_estimates)
+    return SamplingEfficiency(samples, replications, mc_mean, lhs_mean, mc_std, lhs_std)
 
 
 def run_ensemble(model_factory: Callable[[float], ODEModel], initial_state: tuple[float, ...], parameters: Iterable[float], config: ExperimentConfig) -> tuple[EnsembleMember, ...]:
@@ -196,7 +238,6 @@ def run_ensemble(model_factory: Callable[[float], ODEModel], initial_state: tupl
 
 
 def run_named_ensemble(model_factory: Callable[[Mapping[str, float]], ODEModel], initial_state: tuple[float, ...], parameter_sets: Iterable[Mapping[str, float]], config: ExperimentConfig) -> tuple[NamedEnsembleMember, ...]:
-    """Run models built from immutable snapshots of named parameter sets."""
     samples = tuple(parameter_sets)
     if not samples:
         raise ValueError("parameter_sets must not be empty")
@@ -208,8 +249,7 @@ def run_named_ensemble(model_factory: Callable[[Mapping[str, float]], ODEModel],
         if any(not name or not math.isfinite(value) for name, value in normalized):
             raise ValueError("parameter names must be non-empty and values finite")
         parameters = dict(normalized)
-        solution = run_experiment(model_factory(parameters), initial_state, config)
-        members.append(NamedEnsembleMember(normalized, solution))
+        members.append(NamedEnsembleMember(normalized, run_experiment(model_factory(parameters), initial_state, config)))
     return tuple(members)
 
 
@@ -242,7 +282,6 @@ def ensemble_statistics(members: Iterable[EnsembleMember | NamedEnsembleMember])
 
 
 def monte_carlo_convergence(members: Iterable[EnsembleMember | NamedEnsembleMember], observable: Callable[[ODESolution], float], checkpoints: Iterable[int] | None = None) -> MonteCarloConvergence:
-    """Track running mean uncertainty for a scalar simulation observable."""
     items = tuple(members)
     if not items:
         raise ValueError("members must not be empty")
