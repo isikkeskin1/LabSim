@@ -6,6 +6,7 @@ from labsim.uncertainty import (
     EnsembleMember,
     NormalDistribution,
     UniformDistribution,
+    compare_sampling_efficiency,
     ensemble_quantiles,
     ensemble_statistics,
     latin_hypercube_parameter_sets,
@@ -61,6 +62,26 @@ def test_latin_hypercube_validates_design_shape():
         latin_hypercube_parameter_sets({"x": UniformDistribution(0.0, 1.0)}, 0)
     with pytest.raises(ValueError, match="must not be empty"):
         latin_hypercube_parameter_sets({}, 4)
+
+
+def test_sampling_efficiency_is_reproducible_and_lhs_reduces_additive_variance():
+    distributions = {"x": UniformDistribution(0.0, 1.0), "y": UniformDistribution(0.0, 1.0)}
+    kwargs = dict(samples=16, replications=64, seed=91)
+    first = compare_sampling_efficiency(distributions, lambda p: p["x"] + p["y"], **kwargs)
+    second = compare_sampling_efficiency(distributions, lambda p: p["x"] + p["y"], **kwargs)
+    assert first == second
+    assert first.monte_carlo_mean == pytest.approx(1.0, abs=0.08)
+    assert first.latin_hypercube_mean == pytest.approx(1.0, abs=0.02)
+    assert first.latin_hypercube_std < first.monte_carlo_std
+    assert first.variance_ratio > 10.0
+
+
+def test_sampling_efficiency_validates_replications_and_observable():
+    distributions = {"x": UniformDistribution(0.0, 1.0)}
+    with pytest.raises(ValueError, match="replications"):
+        compare_sampling_efficiency(distributions, lambda p: p["x"], samples=4, replications=1)
+    with pytest.raises(ValueError, match="finite"):
+        compare_sampling_efficiency(distributions, lambda p: float("nan"), samples=4, replications=2)
 
 
 def test_named_ensemble_propagates_multiple_parameters():
