@@ -16,16 +16,16 @@ from .solvers import ODESolution, integrate_adaptive, integrate_ode
 from .sweeps import SweepResult, SweepSummary, parameter_sweep, summarize_sweep
 from .uncertainty import (
     EnsembleMember, EnsembleQuantiles, EnsembleStatistics, MonteCarloConvergence,
-    MonteCarloEstimate, NamedEnsembleMember, NormalDistribution, UniformDistribution,
-    ensemble_quantiles, ensemble_statistics, latin_hypercube_parameter_sets,
-    monte_carlo_convergence, run_ensemble, run_named_ensemble, sample_parameter_sets,
-    sample_parameters,
+    MonteCarloEstimate, NamedEnsembleMember, NormalDistribution, SamplingEfficiency,
+    UniformDistribution, compare_sampling_efficiency, ensemble_quantiles,
+    ensemble_statistics, latin_hypercube_parameter_sets, monte_carlo_convergence,
+    run_ensemble, run_named_ensemble, sample_parameter_sets, sample_parameters,
 )
 
 __all__ = [
     "ConvergencePoint", "ConvergenceStudy", "DampedOscillator", "EnsembleMember", "EnsembleQuantiles", "EnsembleStatistics", "ExperimentConfig",
     "HarmonicOscillator", "LogisticGrowth", "LotkaVolterra", "MonteCarloConvergence", "MonteCarloEstimate", "NamedEnsembleMember", "NormalDistribution", "ODEModel", "ODESolution",
-    "SIRModel", "SimplePendulum", "SweepResult", "SweepSummary", "UniformDistribution", "central_difference", "ensemble_quantiles", "ensemble_statistics",
+    "SIRModel", "SamplingEfficiency", "SimplePendulum", "SweepResult", "SweepSummary", "UniformDistribution", "central_difference", "compare_sampling_efficiency", "ensemble_quantiles", "ensemble_statistics",
     "final_state_error", "first_crossing", "first_crossing_hermite", "first_crossing_linear", "first_event", "harmonic_energy",
     "integrate_adaptive", "integrate_ode", "integrate_rk23", "latin_hypercube_parameter_sets", "load_config", "max_state_error", "monte_carlo_convergence", "parameter_sweep", "relative_drift",
     "resample_uniform", "root_mean_square", "run_convergence_study", "run_ensemble", "run_experiment", "run_named_ensemble",
