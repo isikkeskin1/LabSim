@@ -8,6 +8,7 @@ from .dense import resample_uniform, sample_hermite
 from .events import first_crossing, first_crossing_hermite, first_crossing_linear, first_event
 from .experiments import ExperimentConfig, run_experiment
 from .io import write_csv
+from .joint import CorrelatedNormalDistribution, sample_correlation, sample_joint_parameter_sets
 from .metrics import final_state_error, root_mean_square, state_range, time_average
 from .models import DampedOscillator, HarmonicOscillator, LogisticGrowth, LotkaVolterra, ODEModel, SIRModel, SimplePendulum
 from .physics import harmonic_energy, relative_drift
@@ -23,11 +24,11 @@ from .uncertainty import (
 )
 
 __all__ = [
-    "ConvergencePoint", "ConvergenceStudy", "DampedOscillator", "EnsembleMember", "EnsembleQuantiles", "EnsembleStatistics", "ExperimentConfig",
+    "ConvergencePoint", "ConvergenceStudy", "CorrelatedNormalDistribution", "DampedOscillator", "EnsembleMember", "EnsembleQuantiles", "EnsembleStatistics", "ExperimentConfig",
     "HarmonicOscillator", "LogisticGrowth", "LotkaVolterra", "MonteCarloConvergence", "MonteCarloEstimate", "NamedEnsembleMember", "NormalDistribution", "ODEModel", "ODESolution",
     "SIRModel", "SamplingEfficiency", "SimplePendulum", "SweepResult", "SweepSummary", "UniformDistribution", "central_difference", "compare_sampling_efficiency", "ensemble_quantiles", "ensemble_statistics",
     "final_state_error", "first_crossing", "first_crossing_hermite", "first_crossing_linear", "first_event", "harmonic_energy",
     "integrate_adaptive", "integrate_ode", "integrate_rk23", "latin_hypercube_parameter_sets", "load_config", "max_state_error", "monte_carlo_convergence", "parameter_sweep", "relative_drift",
     "resample_uniform", "root_mean_square", "run_convergence_study", "run_ensemble", "run_experiment", "run_named_ensemble",
-    "sample_hermite", "sample_parameter_sets", "sample_parameters", "save_config", "state_range", "summarize_sweep", "time_average", "write_csv",
+    "sample_correlation", "sample_hermite", "sample_joint_parameter_sets", "sample_parameter_sets", "sample_parameters", "save_config", "state_range", "summarize_sweep", "time_average", "write_csv",
 ]
