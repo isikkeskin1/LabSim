@@ -14,6 +14,7 @@ from .models import DampedOscillator, HarmonicOscillator, LogisticGrowth, LotkaV
 from .physics import harmonic_energy, relative_drift
 from .sensitivity import central_difference
 from .sensitivity_convergence import SensitivityConvergence, SensitivityConvergencePoint, sensitivity_convergence
+from .sensitivity_uncertainty import SensitivityInterval, SensitivityUncertainty, sensitivity_uncertainty
 from .sensitivity_variance import SensitivityIndex, VarianceSensitivity, variance_sensitivity
 from .solvers import ODESolution, integrate_adaptive, integrate_ode
 from .sweeps import SweepResult, SweepSummary, parameter_sweep, summarize_sweep
@@ -28,9 +29,9 @@ from .uncertainty import (
 __all__ = [
     "ConvergencePoint", "ConvergenceStudy", "CorrelatedNormalDistribution", "DampedOscillator", "EnsembleMember", "EnsembleQuantiles", "EnsembleStatistics", "ExperimentConfig",
     "HarmonicOscillator", "LogisticGrowth", "LotkaVolterra", "MonteCarloConvergence", "MonteCarloEstimate", "NamedEnsembleMember", "NormalDistribution", "ODEModel", "ODESolution",
-    "SIRModel", "SamplingEfficiency", "SensitivityConvergence", "SensitivityConvergencePoint", "SensitivityIndex", "SimplePendulum", "SweepResult", "SweepSummary", "UniformDistribution", "VarianceSensitivity", "central_difference", "compare_sampling_efficiency", "ensemble_quantiles", "ensemble_statistics",
+    "SIRModel", "SamplingEfficiency", "SensitivityConvergence", "SensitivityConvergencePoint", "SensitivityIndex", "SensitivityInterval", "SensitivityUncertainty", "SimplePendulum", "SweepResult", "SweepSummary", "UniformDistribution", "VarianceSensitivity", "central_difference", "compare_sampling_efficiency", "ensemble_quantiles", "ensemble_statistics",
     "final_state_error", "first_crossing", "first_crossing_hermite", "first_crossing_linear", "first_event", "harmonic_energy",
     "integrate_adaptive", "integrate_ode", "integrate_rk23", "latin_hypercube_parameter_sets", "load_config", "max_state_error", "monte_carlo_convergence", "parameter_sweep", "relative_drift",
     "resample_uniform", "root_mean_square", "run_convergence_study", "run_ensemble", "run_experiment", "run_named_ensemble",
-    "sample_correlation", "sample_hermite", "sample_joint_parameter_sets", "sample_parameter_sets", "sample_parameters", "save_config", "sensitivity_convergence", "state_range", "summarize_sweep", "time_average", "variance_sensitivity", "write_csv",
+    "sample_correlation", "sample_hermite", "sample_joint_parameter_sets", "sample_parameter_sets", "sample_parameters", "save_config", "sensitivity_convergence", "sensitivity_uncertainty", "state_range", "summarize_sweep", "time_average", "variance_sensitivity", "write_csv",
 ]
