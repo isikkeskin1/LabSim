@@ -4,6 +4,7 @@ from .adaptive import integrate_rk23
 from .analysis import max_state_error
 from .config_io import load_config, save_config
 from .convergence import ConvergencePoint, ConvergenceStudy, run_convergence_study
+from .copula import GaussianCopulaDistribution, sample_copula_parameter_sets
 from .dense import resample_uniform, sample_hermite
 from .events import first_crossing, first_crossing_hermite, first_crossing_linear, first_event
 from .experiments import ExperimentConfig, run_experiment
@@ -27,11 +28,11 @@ from .uncertainty import (
 )
 
 __all__ = [
-    "ConvergencePoint", "ConvergenceStudy", "CorrelatedNormalDistribution", "DampedOscillator", "EnsembleMember", "EnsembleQuantiles", "EnsembleStatistics", "ExperimentConfig",
+    "ConvergencePoint", "ConvergenceStudy", "CorrelatedNormalDistribution", "DampedOscillator", "EnsembleMember", "EnsembleQuantiles", "EnsembleStatistics", "ExperimentConfig", "GaussianCopulaDistribution",
     "HarmonicOscillator", "LogisticGrowth", "LotkaVolterra", "MonteCarloConvergence", "MonteCarloEstimate", "NamedEnsembleMember", "NormalDistribution", "ODEModel", "ODESolution",
     "SIRModel", "SamplingEfficiency", "SensitivityConvergence", "SensitivityConvergencePoint", "SensitivityIndex", "SensitivityInterval", "SensitivityUncertainty", "SimplePendulum", "SweepResult", "SweepSummary", "UniformDistribution", "VarianceSensitivity", "central_difference", "compare_sampling_efficiency", "ensemble_quantiles", "ensemble_statistics",
     "final_state_error", "first_crossing", "first_crossing_hermite", "first_crossing_linear", "first_event", "harmonic_energy",
     "integrate_adaptive", "integrate_ode", "integrate_rk23", "latin_hypercube_parameter_sets", "load_config", "max_state_error", "monte_carlo_convergence", "parameter_sweep", "relative_drift",
     "resample_uniform", "root_mean_square", "run_convergence_study", "run_ensemble", "run_experiment", "run_named_ensemble",
-    "sample_correlation", "sample_hermite", "sample_joint_parameter_sets", "sample_parameter_sets", "sample_parameters", "save_config", "sensitivity_convergence", "sensitivity_uncertainty", "state_range", "summarize_sweep", "time_average", "variance_sensitivity", "write_csv",
+    "sample_copula_parameter_sets", "sample_correlation", "sample_hermite", "sample_joint_parameter_sets", "sample_parameter_sets", "sample_parameters", "save_config", "sensitivity_convergence", "sensitivity_uncertainty", "state_range", "summarize_sweep", "time_average", "variance_sensitivity", "write_csv",
 ]
